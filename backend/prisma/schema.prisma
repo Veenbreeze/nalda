@@ -1,0 +1,1117 @@
+// NALDA USA Products CRM - Prisma schema
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum AdminStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  BLOCKED
+}
+
+enum CustomerSource {
+  MANUAL
+  IMPORT
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+  WALK_IN
+  REFERRAL
+  OTHER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNSPECIFIED
+}
+
+enum InterestLevel {
+  LOW
+  MEDIUM
+  HIGH
+  PURCHASED
+  NO_LONGER_INTERESTED
+}
+
+enum InterestSource {
+  MANUAL
+  WHATSAPP
+  ORDER
+  ADMIN_RECOMMENDATION
+  IMPORT
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  OUT_OF_STOCK
+}
+
+enum ProductSource {
+  USA_IMPORT
+  LOCAL
+  OTHER
+}
+
+enum OrderSource {
+  WHATSAPP
+  MANUAL
+  INSTAGRAM
+  PHONE
+  WALK_IN
+  REFERRAL
+  OTHER
+}
+
+enum OrderStatus {
+  NEW
+  PENDING_CONFIRMATION
+  CONFIRMED
+  PROCESSING
+  READY_FOR_COLLECTION
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CARD
+  OTHER
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  AUDIO
+  VIDEO
+  TEMPLATE
+  SYSTEM
+  UNKNOWN
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  RECEIVED
+}
+
+enum ConversationStatus {
+  OPEN
+  PENDING
+  CLOSED
+  ARCHIVED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  SKIPPED
+}
+
+enum AutomationTrigger {
+  NEW_ARRIVAL
+  RESTOCK
+  FOLLOW_UP
+  NEW_WHATSAPP_ORDER
+  INTEREST_DETECTION
+}
+
+enum AutomationStatus {
+  ACTIVE
+  PAUSED
+  DRAFT
+}
+
+enum ExecutionStatus {
+  SUCCESS
+  FAILED
+  SKIPPED
+  PARTIAL
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ExportFormat {
+  XLSX
+  CSV
+}
+
+enum BackupStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  VERIFIED
+}
+
+enum BackupType {
+  MANUAL
+  SCHEDULED
+  SAFETY
+}
+
+enum ActivityType {
+  CUSTOMER_REGISTERED
+  IMPORT
+  WHATSAPP_INBOUND
+  WHATSAPP_OUTBOUND
+  PRODUCT_INQUIRY
+  PRODUCT_INTEREST
+  ORDER_RECEIVED
+  ORDER_CONFIRMED
+  PURCHASE
+  PAYMENT
+  NOTE
+  CAMPAIGN
+  FOLLOW_UP
+  CALL
+  VISIT
+  TASK
+  STATUS_CHANGE
+  OTHER
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+enum ShipmentType {
+  SEA_FREIGHT
+  AIR_FREIGHT
+  COURIER
+  OTHER
+}
+
+enum ShipmentStatus {
+  REQUESTED
+  IN_TRANSIT
+  AT_PORT
+  CUSTOMS
+  ARRIVED
+  DELIVERED
+  CANCELLED
+}
+
+enum PersonalShoppingStatus {
+  REQUESTED
+  SOURCING
+  QUOTED
+  APPROVED
+  PURCHASED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ============================================================
+// ACCESS CONTROL
+// ============================================================
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  permissions String[] @default([])
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  admins Admin[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  label       String
+  category    String
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@map("permissions")
+}
+
+model Admin {
+  id                 String      @id @default(uuid())
+  email              String      @unique
+  passwordHash       String
+  fullName           String
+  phone              String?
+  avatarUrl          String?
+  status             AdminStatus @default(ACTIVE)
+  roleId             String
+  lastLoginAt        DateTime?
+  failedLoginAttempts Int        @default(0)
+  lockedUntil        DateTime?
+  passwordResetToken String?     @unique
+  passwordResetExpires DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  deletedAt          DateTime?
+
+  role            Role             @relation(fields: [roleId], references: [id])
+  sessions        AdminSession[]
+  auditLogs       AuditLog[]
+  notes           Note[]
+  activities      Activity[]
+  assignedTasks   Activity[]       @relation("AssignedTasks")
+  importJobs      ImportJob[]
+  exportJobs      ExportJob[]
+  backupRecords   BackupRecord[]
+  campaigns       WhatsAppCampaign[]
+  automationRuns  AutomationExecution[]
+
+  @@index([roleId])
+  @@index([status])
+  @@map("admins")
+}
+
+model AdminSession {
+  id           String   @id @default(uuid())
+  adminId      String
+  tokenHash    String   @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  adminId    String?
+  action     String
+  entityType String?
+  entityId   String?
+  description String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  admin Admin? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([adminId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  isPublic    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@map("system_settings")
+}
+
+// ============================================================
+// CUSTOMERS
+// ============================================================
+
+model Customer {
+  id                 String         @id @default(uuid())
+  customerCode       String         @unique
+  fullName           String
+  phone              String
+  whatsappPhone      String?
+  alternatePhone     String?
+  email              String?
+  gender             Gender         @default(UNSPECIFIED)
+  dateOfBirth        DateTime?
+  location           String?
+  physicalAddress    String?
+  source             CustomerSource @default(MANUAL)
+  status             CustomerStatus @default(ACTIVE)
+  notes              String?
+  marketingConsent   Boolean        @default(false)
+  whatsappOptIn      Boolean        @default(false)
+  preferredChannel   String?        @default("WHATSAPP")
+  totalSpent         Decimal        @default(0) @db.Decimal(16, 2)
+  totalOrders        Int            @default(0)
+  lastPurchaseAt     DateTime?
+  lastInteractionAt  DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
+
+  addresses        CustomerAddress[]
+  tags             CustomerTag[]
+  interests        ProductInterest[]
+  orders           Order[]
+  activities       Activity[]
+  notesList        Note[]
+  conversations    WhatsAppConversation[]
+  messages         WhatsAppMessage[]
+  deals            Deal[]
+  campaignRecipients WhatsAppCampaignRecipient[]
+  personalShopping PersonalShoppingRequest[]
+  cargoShipments   CargoShipment[]
+
+  @@index([phone])
+  @@index([whatsappPhone])
+  @@index([fullName])
+  @@index([status])
+  @@index([location])
+  @@index([source])
+  @@index([createdAt])
+  @@index([lastPurchaseAt])
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id         String   @id @default(uuid())
+  customerId String
+  label      String?
+  line1      String
+  line2      String?
+  city       String?
+  region     String?
+  country    String   @default("Tanzania")
+  postalCode String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_addresses")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("#C9A227")
+  createdAt DateTime @default(now())
+
+  customers CustomerTag[]
+
+  @@map("tags")
+}
+
+model CustomerTag {
+  id         String   @id @default(uuid())
+  customerId String
+  tagId      String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, tagId])
+  @@index([customerId])
+  @@index([tagId])
+  @@map("customer_tags")
+}
+
+// ============================================================
+// PRODUCTS
+// ============================================================
+
+model ProductCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  products Product[]
+  interests ProductInterest[]
+
+  @@map("product_categories")
+}
+
+model Product {
+  id             String        @id @default(uuid())
+  name           String
+  sku            String        @unique
+  description    String?
+  categoryId     String?
+  brand          String?
+  imageUrl       String?
+  images         String[]      @default([])
+  sellingPrice   Decimal       @db.Decimal(14, 2)
+  costPrice      Decimal?      @db.Decimal(14, 2)
+  stockQuantity  Int           @default(0)
+  minStockLevel  Int           @default(5)
+  status         ProductStatus @default(ACTIVE)
+  source         ProductSource @default(USA_IMPORT)
+  isNewArrival   Boolean       @default(false)
+  isFeatured     Boolean       @default(false)
+  purchaseCount  Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  category    ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  interests   ProductInterest[]
+  orderItems  OrderItem[]
+  dealItems   DealItem[]
+
+  @@index([categoryId])
+  @@index([name])
+  @@index([status])
+  @@index([isNewArrival])
+  @@index([createdAt])
+  @@map("products")
+}
+
+model ProductInterest {
+  id            String         @id @default(uuid())
+  customerId    String
+  productId     String?
+  categoryId    String?
+  productName   String?
+  interestLevel InterestLevel  @default(MEDIUM)
+  source        InterestSource @default(MANUAL)
+  inquiryCount  Int            @default(1)
+  purchaseStatus String?
+  note          String?
+  lastInteractionAt DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  customer Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  category ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([productId])
+  @@index([categoryId])
+  @@map("product_interests")
+}
+
+// ============================================================
+// ORDERS & PAYMENTS
+// ============================================================
+
+model Order {
+  id             String        @id @default(uuid())
+  orderNumber    String        @unique
+  customerId     String
+  source         OrderSource   @default(MANUAL)
+  status         OrderStatus   @default(NEW)
+  paymentStatus  PaymentStatus @default(UNPAID)
+  subtotal       Decimal       @default(0) @db.Decimal(14, 2)
+  discount       Decimal       @default(0) @db.Decimal(14, 2)
+  totalAmount    Decimal       @default(0) @db.Decimal(14, 2)
+  amountPaid     Decimal       @default(0) @db.Decimal(14, 2)
+  currency       String        @default("TZS")
+  notes          String?
+  whatsappMessageRef String?
+  needsReview    Boolean       @default(false)
+  orderDate      DateTime      @default(now())
+  confirmedAt    DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  customer Customer     @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+  payments Payment[]
+  deals    Deal[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([orderDate])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String  @id @default(uuid())
+  orderId    String
+  productId  String?
+  productName String
+  quantity   Int     @default(1)
+  unitPrice  Decimal @db.Decimal(14, 2)
+  lineTotal  Decimal @db.Decimal(14, 2)
+  createdAt  DateTime @default(now())
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  orderId     String
+  amount      Decimal       @db.Decimal(14, 2)
+  method      PaymentMethod @default(CASH)
+  reference   String?
+  notes       String?
+  paidAt      DateTime      @default(now())
+  recordedBy  String?
+  createdAt   DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([paidAt])
+  @@map("payments")
+}
+
+// ============================================================
+// SALES PIPELINE
+// ============================================================
+
+model Pipeline {
+  id          String   @id @default(uuid())
+  name        String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stages PipelineStage[]
+  deals  Deal[]
+
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id         String   @id @default(uuid())
+  pipelineId String
+  name       String
+  position   Int      @default(0)
+  color      String   @default("#C9A227")
+  isWon      Boolean  @default(false)
+  isLost     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  deals    Deal[]
+
+  @@index([pipelineId])
+  @@map("pipeline_stages")
+}
+
+model Deal {
+  id             String     @id @default(uuid())
+  title          String
+  customerId     String
+  pipelineId     String
+  stageId        String
+  orderId        String?
+  value          Decimal    @default(0) @db.Decimal(14, 2)
+  currency       String     @default("TZS")
+  status         DealStatus @default(OPEN)
+  notes          String?
+  expectedCloseAt DateTime?
+  stageChangedAt DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  deletedAt      DateTime?
+
+  customer Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  pipeline Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  stage    PipelineStage @relation(fields: [stageId], references: [id])
+  order    Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  items    DealItem[]
+  history  DealStageHistory[]
+
+  @@index([customerId])
+  @@index([pipelineId])
+  @@index([stageId])
+  @@index([status])
+  @@map("deals")
+}
+
+model DealItem {
+  id        String   @id @default(uuid())
+  dealId    String
+  productId String?
+  name      String
+  quantity  Int      @default(1)
+  unitPrice Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+
+  deal    Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([dealId])
+  @@map("deal_items")
+}
+
+model DealStageHistory {
+  id          String   @id @default(uuid())
+  dealId      String
+  fromStageId String?
+  toStageId   String
+  changedBy   String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@map("deal_stage_history")
+}
+
+// ============================================================
+// ACTIVITIES & NOTES
+// ============================================================
+
+model Activity {
+  id          String       @id @default(uuid())
+  customerId  String?
+  adminId     String?
+  assignedToId String?
+  type        ActivityType
+  title       String
+  description String?
+  source      String?
+  metadata    Json?
+  dueAt       DateTime?
+  completedAt DateTime?
+  taskStatus  TaskStatus?
+  priority    TaskPriority @default(MEDIUM)
+  isTask      Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  admin      Admin?    @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  assignedTo Admin?    @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([type])
+  @@index([isTask])
+  @@index([dueAt])
+  @@index([createdAt])
+  @@map("activities")
+}
+
+model Note {
+  id         String   @id @default(uuid())
+  customerId String
+  adminId    String?
+  body       String
+  isPinned   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  admin    Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@map("notes")
+}
+
+// ============================================================
+// WHATSAPP
+// ============================================================
+
+model WhatsAppConversation {
+  id             String             @id @default(uuid())
+  customerId     String
+  whatsappPhone  String
+  status         ConversationStatus @default(OPEN)
+  lastMessageAt  DateTime?
+  lastMessagePreview String?
+  unreadCount    Int                @default(0)
+  assignedToId   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  customer  Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  messages  WhatsAppMessage[]
+
+  @@unique([customerId, whatsappPhone])
+  @@index([customerId])
+  @@index([lastMessageAt])
+  @@index([status])
+  @@map("whatsapp_conversations")
+}
+
+model WhatsAppMessage {
+  id              String           @id @default(uuid())
+  conversationId  String?
+  customerId      String?
+  waMessageId     String?          @unique
+  direction       MessageDirection
+  type            MessageType      @default(TEXT)
+  status          MessageStatus    @default(RECEIVED)
+  fromPhone       String
+  toPhone         String?
+  body            String?
+  mediaUrl        String?
+  mediaMimeType   String?
+  templateName    String?
+  metadata        Json?
+  errorMessage    String?
+  isProcessed     Boolean          @default(false)
+  processingError String?
+  sentByAdminId   String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  conversation WhatsAppConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  customer     Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId])
+  @@index([customerId])
+  @@index([fromPhone])
+  @@index([createdAt])
+  @@index([direction])
+  @@map("whatsapp_messages")
+}
+
+model WhatsAppTemplate {
+  id            String   @id @default(uuid())
+  name          String
+  language      String   @default("sw")
+  category      String   @default("MARKETING")
+  body          String
+  variables     String[] @default([])
+  metaTemplateId String?
+  status        String   @default("APPROVED")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  campaigns WhatsAppCampaign[]
+
+  @@unique([name, language])
+  @@map("whatsapp_templates")
+}
+
+model WhatsAppCampaign {
+  id             String         @id @default(uuid())
+  name           String
+  type           String         @default("NEW_ARRIVAL")
+  status         CampaignStatus @default(DRAFT)
+  templateId     String?
+  messageBody    String
+  targetFilter   Json?
+  totalRecipients Int           @default(0)
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+  createdById    String?
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  createdBy   Admin?                      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  template    WhatsAppTemplate?           @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  recipients  WhatsAppCampaignRecipient[]
+
+  @@index([status])
+  @@map("whatsapp_campaigns")
+}
+
+model WhatsAppCampaignRecipient {
+  id              String          @id @default(uuid())
+  campaignId      String
+  customerId      String
+  phone           String
+  personalizedBody String?
+  status          RecipientStatus @default(PENDING)
+  waMessageId     String?
+  errorMessage    String?
+  sentAt          DateTime?
+  createdAt       DateTime        @default(now())
+
+  campaign WhatsAppCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, customerId])
+  @@index([campaignId])
+  @@map("whatsapp_campaign_recipients")
+}
+
+// ============================================================
+// AUTOMATION
+// ============================================================
+
+model AutomationWorkflow {
+  id          String            @id @default(uuid())
+  name        String
+  trigger     AutomationTrigger
+  status      AutomationStatus  @default(DRAFT)
+  description String?
+  config      Json?
+  requireApproval Boolean       @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  executions AutomationExecution[]
+
+  @@index([trigger])
+  @@index([status])
+  @@map("automation_workflows")
+}
+
+model AutomationExecution {
+  id           String          @id @default(uuid())
+  workflowId   String
+  trigger      AutomationTrigger
+  status       ExecutionStatus @default(SUCCESS)
+  entityType   String?
+  entityId     String?
+  summary      String?
+  logs         Json?
+  errorMessage String?
+  adminId      String?
+  createdAt    DateTime        @default(now())
+
+  workflow AutomationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  admin    Admin?             @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([workflowId])
+  @@index([createdAt])
+  @@map("automation_executions")
+}
+
+// ============================================================
+// IMPORT / EXPORT
+// ============================================================
+
+model ImportJob {
+  id             String       @id @default(uuid())
+  fileName       String
+  fileType       String
+  status         ImportStatus @default(PENDING)
+  adminId        String?
+  totalRecords   Int          @default(0)
+  successCount   Int          @default(0)
+  failedCount    Int          @default(0)
+  duplicateCount Int          @default(0)
+  columnMapping  Json?
+  duplicateStrategy String   @default("SKIP")
+  errorReportPath String?
+  errorsLog      Json?
+  createdAt      DateTime     @default(now())
+  completedAt    DateTime?
+
+  admin  Admin?            @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  errors ImportRowError[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("import_jobs")
+}
+
+model ImportRowError {
+  id           String   @id @default(uuid())
+  importJobId  String
+  rowNumber    Int
+  rawData      Json?
+  errorMessage String
+  createdAt    DateTime @default(now())
+
+  importJob ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+
+  @@index([importJobId])
+  @@map("import_row_errors")
+}
+
+model ExportJob {
+  id          String       @id @default(uuid())
+  type        String
+  format      ExportFormat @default(XLSX)
+  status      ExportStatus @default(PENDING)
+  adminId     String?
+  filters     Json?
+  fields      String[]     @default([])
+  recordCount Int          @default(0)
+  filePath    String?
+  errorMessage String?
+  createdAt   DateTime     @default(now())
+  completedAt DateTime?
+
+  admin Admin? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("export_jobs")
+}
+
+// ============================================================
+// BACKUP
+// ============================================================
+
+model BackupRecord {
+  id           String       @id @default(uuid())
+  fileName     String
+  filePath     String
+  fileSize     Int          @default(0)
+  type         BackupType   @default(MANUAL)
+  status       BackupStatus @default(PENDING)
+  adminId      String?
+  checksum     String?
+  metadata     Json?
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  completedAt  DateTime?
+
+  admin Admin? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("backup_records")
+}
+
+// ============================================================
+// CARGO & PERSONAL SHOPPING
+// ============================================================
+
+model CargoShipment {
+  id                String         @id @default(uuid())
+  cargoReference    String         @unique
+  customerId        String
+  shipmentType      ShipmentType   @default(SEA_FREIGHT)
+  description       String?
+  shipmentDate      DateTime?
+  estimatedArrival  DateTime?
+  actualArrival     DateTime?
+  status            ShipmentStatus @default(REQUESTED)
+  orderId           String?
+  notes             String?
+  weightKg          Decimal?       @db.Decimal(10, 2)
+  cost              Decimal?       @db.Decimal(14, 2)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([status])
+  @@map("cargo_shipments")
+}
+
+model PersonalShoppingRequest {
+  id               String                 @id @default(uuid())
+  requestNumber    String                 @unique
+  customerId       String
+  productName      String
+  productDescription String?
+  referenceImageUrl String?
+  estimatedPrice   Decimal?               @db.Decimal(14, 2)
+  requestDate      DateTime               @default(now())
+  status           PersonalShoppingStatus @default(REQUESTED)
+  notes            String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([status])
+  @@map("personal_shopping_requests")
+}
+
+// ============================================================
+// SEQUENCES (for human-readable codes)
+// ============================================================
+
+model Sequence {
+  key     String @id
+  value   Int    @default(0)
+  updatedAt DateTime @updatedAt
+}

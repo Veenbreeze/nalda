@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nalda-crm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nalda
+      POSTGRES_PASSWORD: nalda_dev_password
+      POSTGRES_DB: nalda_crm
+    ports:
+      - "5434:5432"
+    volumes:
+      - nalda_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nalda -d nalda_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  nalda_pgdata:

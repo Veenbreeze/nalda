@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-cream text-ink-800 font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-gold-200 text-ink-900;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #ebf58fc4 transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-ink-200;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-ink-100 bg-white shadow-soft;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-500;
+  }
+
+  .input-base {
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-800 outline-none transition placeholder:text-ink-300 focus:border-gold-500 focus:ring-4 focus:ring-gold-500/10 disabled:cursor-not-allowed disabled:bg-ink-50;
+  }
+
+  .table-base {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .table-base thead th {
+    @apply border-b border-ink-100 bg-ink-50/70 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-500;
+  }
+
+  .table-base tbody td {
+    @apply border-b border-ink-50 px-4 py-3.5 align-middle text-ink-700;
+  }
+
+  .table-base tbody tr {
+    @apply transition hover:bg-gold-50/40;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-300 transition hover:bg-white/5 hover:text-white;
+  }
+
+  .sidebar-link-active {
+    @apply bg-white/[0.07] text-white shadow-inner;
+  }
+
+  .sidebar-link-active::before {
+    content: '';
+    @apply absolute left-0 h-5 w-1 rounded-r-full bg-gold-500;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
