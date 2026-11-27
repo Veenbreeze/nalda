@@ -12,6 +12,8 @@
     "db:seed": "npm run db:seed --prefix backend",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
+    "dev:website": "npm run dev --prefix website",
+    "build:website": "npm run build --prefix website",
     "build": "npm run build --prefix backend && npm run build --prefix frontend",
     "test": "npm test --prefix backend && npm test --prefix frontend"
   }
